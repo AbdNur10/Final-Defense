@@ -67,6 +67,132 @@
   }
 }
 
+/* ============ STREAM VIDEO SDK CUSTOMIZATION (Group Call) ============ */
+.str-video__speaker-layout {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%) !important;
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+
+.str-video__participant-view {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  border: 2px solid rgba(255, 255, 255, 0.15) !important;
+  transition: transform 0.2s ease, border-color 0.2s ease !important;
+}
+
+.str-video__participant-view:hover {
+  transform: scale(1.01);
+  border-color: rgba(79, 70, 229, 0.6) !important;
+}
+
+/* Call Controls - FIXED VISIBLE BUTTONS */
+.str-video__call-controls {
+  background: rgba(0, 0, 0, 0.6) !important;
+  padding: 12px 20px !important;
+  border-radius: 60px !important;
+  backdrop-filter: blur(8px);
+  display: flex !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+.str-video__call-controls__button {
+  background-color: rgba(0, 0, 0, 0.75) !important;
+  color: white !important;
+  border-radius: 50% !important;
+  width: 48px !important;
+  height: 48px !important;
+  margin: 0 8px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.str-video__call-controls__button svg {
+  fill: white !important;
+  stroke: white !important;
+  width: 22px !important;
+  height: 22px !important;
+}
+
+.str-video__call-controls__button:hover {
+  background-color: #4f46e5 !important;
+  transform: scale(1.05) !important;
+}
+
+.str-video__call-controls__button--active {
+  background-color: #ef4444 !important;
+}
+
+.str-video__call-controls__button--active:hover {
+  background-color: #dc2626 !important;
+}
+
+/* Camera and Mic off states */
+.str-video__call-controls__button--camera-off,
+.str-video__call-controls__button--microphone-off {
+  background-color: #ef4444 !important;
+}
+
+/* Leave button */
+.str-video__call-controls__leave-button {
+  background-color: #ef4444 !important;
+}
+
+.str-video__call-controls__leave-button:hover {
+  background-color: #dc2626 !important;
+}
+
+/* Screen share active */
+.str-video__call-controls__button--screen-share-active {
+  background-color: #10b981 !important;
+}
+
+/* Participant name labels */
+.str-video__participant-name {
+  background: rgba(0, 0, 0, 0.7) !important;
+  color: white !important;
+  padding: 4px 12px !important;
+  border-radius: 20px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  backdrop-filter: blur(4px);
+}
+
+.str-video__speaker-layout__wrapper {
+  gap: 12px;
+}
+
+/* Screen share indicator */
+.str-video__screen-share-indicator {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+/* Responsive video controls */
+@media (max-width: 768px) {
+  .str-video__call-controls__button {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  
+  .str-video__call-controls__button svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+  
+  .str-video__participant-name {
+    font-size: 10px !important;
+    padding: 2px 8px !important;
+  }
+  
+  .str-video__call-controls {
+    padding: 8px 12px !important;
+  }
+}
+
 /* ============ ANIMATIONS ============ */
 @keyframes fadeIn {
   from {
@@ -454,5 +580,33 @@
     right: 1rem;
     width: 48px;
     height: 48px;
+  }
+}
+
+/* ============ FIX FOR AVATAR IMAGE ERRORS ============ */
+img {
+  background-color: #4f46e5;
+}
+
+img[src=""],
+img:not([src]) {
+  opacity: 0;
+}
+
+/* ============ RESPONSIVE VIDEO GRID ============ */
+@media (min-width: 1024px) {
+  .str-video__speaker-layout__wrapper {
+    gap: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .str-video__call-controls {
+    gap: 4px;
+    padding: 8px 12px !important;
+  }
+  
+  .str-video__call-controls__button {
+    margin: 0 4px !important;
   }
 }

@@ -11,6 +11,8 @@ import FriendsPage from "./pages/FriendsPage.jsx";
 import GroupsPage from "./pages/GroupsPage.jsx";
 import GroupCallPage from "./pages/GroupCallPage.jsx";
 import GroupChatPage from "./pages/GroupChatPage.jsx";
+import InboxPage from "./pages/InboxPage.jsx";
+import SettingsPage from "./pages/SettingsPage.jsx";
 
 import { Toaster } from "react-hot-toast";
 import PageLoader from "./components/PageLoader.jsx";
@@ -46,13 +48,13 @@ const App = () => {
         />
 
         <Route
-  path="/groups"
-  element={
-    <Layout showSidebar={true}>
-      <GroupsPage />
-    </Layout>
-  }
-/>
+          path="/groups"
+          element={
+            <Layout showSidebar={true}>
+              <GroupsPage />
+            </Layout>
+          }
+        />
 
         {/* AUTH */}
         <Route path="/signup" element={<SignupPage />} />
@@ -60,6 +62,16 @@ const App = () => {
 
         {/* ONBOARDING */}
         <Route path="/onboarding" element={<OnboardingPage />} />
+
+        {/* INBOX */}
+        <Route
+          path="/inbox"
+          element={
+            <Layout showSidebar={true}>
+              <InboxPage />
+            </Layout>
+          }
+        />
 
         {/* NOTIFICATIONS */}
         <Route
@@ -84,7 +96,7 @@ const App = () => {
         {/* CALL */}
         <Route path="/call/:id" element={<CallPage />} />
 
-        {/* GROUP LIST (🔥 IMPORTANT) */}
+        {/* GROUP LIST */}
         <Route
           path="/groups"
           element={
@@ -111,15 +123,14 @@ const App = () => {
         />
 
         {/* AI MENTOR */}
-        {/* Add this inside your Routes */}
-<Route
-  path="/ai-mentor"
-  element={
-    <Layout showSidebar={true}>
-      <AIMentorPage />
-    </Layout>
-  }
-/>
+        <Route
+          path="/ai-mentor"
+          element={
+            <Layout showSidebar={true}>
+              <AIMentorPage />
+            </Layout>
+          }
+        />
 
         {/* FRIENDS */}
         <Route
@@ -127,6 +138,16 @@ const App = () => {
           element={
             <Layout showSidebar={true}>
               <FriendsPage />
+            </Layout>
+          }
+        />
+
+        {/* ✅ SETTINGS - NEW ROUTE */}
+        <Route
+          path="/settings"
+          element={
+            <Layout showSidebar={true}>
+              <SettingsPage />
             </Layout>
           }
         />

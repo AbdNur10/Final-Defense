@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import useAuthUser from "../hooks/useAuthUser";
 import { LuShipWheel } from "react-icons/lu";
-import { FaBell, FaUsers, FaRobot, FaUserFriends, FaSignOutAlt, FaHome } from "react-icons/fa";
+import { FaBell, FaUsers, FaRobot, FaUserFriends, FaSignOutAlt, FaHome, FaInbox } from "react-icons/fa";
 import { IoSettingsOutline } from "react-icons/io5";
 import ThemeSelector from "./ThemeSelector";
 import useLogout from "../hooks/useLogout";
@@ -18,6 +18,7 @@ const Navbar = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const isChatPage = location.pathname?.startsWith("/chat");
+  const isInboxPage = location.pathname?.startsWith("/inbox");
   const { unreadCount, increment, reset } = useNotificationStore();
   const { socket } = useSocket();
   const { logoutMutation } = useLogout();
@@ -45,7 +46,7 @@ const Navbar = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          {isChatPage && (
+          {(isChatPage || isInboxPage) && (
             <Link to="/" className="flex items-center gap-2.5 group">
               <LuShipWheel className="size-8 text-primary group-hover:rotate-12 transition-transform" />
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
@@ -54,12 +55,16 @@ const Navbar = () => {
             </Link>
           )}
 
-          {/* Navigation Links (Center) */}
-          {!isChatPage && (
+          {/* Navigation Links - Hidden on Mobile */}
+          {!isChatPage && !isInboxPage && (
             <div className="hidden md:flex items-center gap-1">
               <Link to="/" className="btn btn-ghost btn-sm gap-2">
                 <FaHome />
                 Home
+              </Link>
+              <Link to="/inbox" className="btn btn-ghost btn-sm gap-2">
+                <FaInbox />
+                Inbox
               </Link>
               <Link to="/friends" className="btn btn-ghost btn-sm gap-2">
                 <FaUserFriends />
@@ -78,7 +83,17 @@ const Navbar = () => {
 
           {/* Right Actions */}
           <div className="flex items-center gap-2 ml-auto">
-            {/* Groups Button (Mobile) */}
+            {/* Inbox Button - Always visible */}
+            <Link to="/inbox" className="btn btn-ghost btn-circle relative">
+              <FaInbox className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 badge badge-xs badge-primary animate-pulse">
+                  {unreadCount}
+                </span>
+              )}
+            </Link>
+
+            {/* Groups Button (Mobile only) */}
             <button
               onClick={() => navigate("/groups")}
               className="btn btn-ghost btn-circle md:hidden"
@@ -115,6 +130,12 @@ const Navbar = () => {
                 <ul className="dropdown-content menu bg-base-200 rounded-box z-50 w-52 p-2 shadow-xl mt-2 border border-base-300" onClick={() => setShowUserMenu(false)}>
                   <li className="menu-title px-3 py-2 border-b border-base-300">
                     <span>{authUser?.fullName}</span>
+                  </li>
+                  <li>
+                    <Link to="/inbox" className="gap-3">
+                      <FaInbox />
+                      Inbox
+                    </Link>
                   </li>
                   <li>
                     <Link to="/friends" className="gap-3">

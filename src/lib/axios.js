@@ -1,12 +1,12 @@
 // frontend/src/lib/axios.js
 import axios from "axios";
 
-// const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+// ✅ Use environment variable with fallback
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
 
 export const axiosInstance = axios.create({
-  baseURL: "http://localhost:5001/api",
-    // baseURL: API_URL,
-  withCredentials: true, // This is IMPORTANT for cookies
+  baseURL: API_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },

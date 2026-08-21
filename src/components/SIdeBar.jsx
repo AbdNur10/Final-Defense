@@ -2,16 +2,17 @@
 import useAuthUser from '../hooks/useAuthUser';
 import { Link, useLocation } from 'react-router-dom';
 import { LuShipWheel } from "react-icons/lu";
-import { MdHome, MdPeople, MdGroups, MdNotifications, MdChat, MdSmartToy } from "react-icons/md";
-import { FaUserFriends } from "react-icons/fa";
+import { MdHome, MdGroups, MdNotifications, MdSmartToy } from "react-icons/md";
+import { FaUserFriends, FaInbox, FaTimes } from "react-icons/fa";
 
-const Sidebar = () => {
+const Sidebar = ({ onClose }) => {
   const { authUser } = useAuthUser();
   const location = useLocation();
   const currentPath = location.pathname;
 
   const navItems = [
     { path: "/", icon: <MdHome className="size-5" />, label: "Home" },
+    { path: "/inbox", icon: <FaInbox className="size-5" />, label: "Inbox" },
     { path: "/friends", icon: <FaUserFriends className="size-5" />, label: "Friends" },
     { path: "/groups", icon: <MdGroups className="size-5" />, label: "Groups" },
     { path: "/ai-mentor", icon: <MdSmartToy className="size-5" />, label: "AI Mentor" },
@@ -19,10 +20,17 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className="w-72 bg-base-100 border-r border-base-300 hidden lg:flex flex-col h-screen sticky top-0 shadow-lg">
+    <aside className="w-72 bg-base-100 border-r border-base-300 flex flex-col h-screen shadow-lg">
+      {/* Close Button (Mobile Only) */}
+      <div className="lg:hidden flex justify-end p-4 border-b">
+        <button onClick={onClose} className="btn btn-ghost btn-sm btn-circle">
+          <FaTimes className="size-5" />
+        </button>
+      </div>
+
       {/* Logo */}
       <div className="p-6 border-b border-base-300">
-        <Link to="/" className="flex items-center gap-3 group">
+        <Link to="/" className="flex items-center gap-3 group" onClick={onClose}>
           <LuShipWheel className="size-9 text-primary group-hover:rotate-12 transition-transform" />
           <span className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
             KYAU-CHAT
@@ -31,11 +39,12 @@ const Sidebar = () => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
+            onClick={onClose}
             className={`btn btn-ghost justify-start w-full gap-3 px-4 py-3 normal-case text-base transition-all ${
               currentPath === item.path 
                 ? "bg-primary/10 text-primary border-l-4 border-primary" 

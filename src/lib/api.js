@@ -71,9 +71,6 @@ export const getGroupMessages = (groupId) => axiosInstance.get(`/groups/${groupI
 export const sendGroupMessage = ({ groupId, text }) => axiosInstance.post(`/groups/${groupId}/messages`, { text }).then(res => res.data);
 export const searchUsers = (query) => axiosInstance.get(`/search/users?q=${query}`).then(res => res.data);
 
-
-
-// frontend/src/lib/api.js
 export const chatWithMentor = async ({ message, mode = "general", aiProvider = "auto" }) => {
   const response = await axiosInstance.post("/ai/mentor", { 
     message, 
@@ -82,9 +79,6 @@ export const chatWithMentor = async ({ message, mode = "general", aiProvider = "
   });
   return response.data;
 };
-
-
-// Replace these two functions:
 
 export const createGroup = async ({ name, memberIds = [] }) => {
   try {
@@ -107,4 +101,57 @@ export const getMyGroups = async () => {
     console.error("Get groups error:", error.response?.data || error.message);
     return [];
   }
+};
+
+// Add members to existing group
+export const addGroupMembers = async (groupId, memberIds) => {
+  const response = await axiosInstance.post(`/groups/${groupId}/members`, { memberIds });
+  return response.data;
+};
+
+// ============ FILE UPLOAD FUNCTIONS ============
+
+// Upload single file (images, PDFs, documents)
+export const uploadFile = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await axiosInstance.post("/chat/upload", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return response.data;
+};
+
+// Upload multiple files (max 5)
+export const uploadMultipleFiles = async (files) => {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+
+  const response = await axiosInstance.post("/chat/upload-multiple", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return response.data;
+};
+
+// ============ PROFILE PICTURE UPLOAD ============
+
+export const uploadProfilePicture = async (file) => {
+  const formData = new FormData();
+  formData.append("avatar", file);
+
+  const response = await axiosInstance.post("/users/upload-avatar", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return response.data;
+};
+
+export const generateRandomAvatar = async () => {
+  const response = await axiosInstance.post("/users/random-avatar");
+  return response.data;
 };
