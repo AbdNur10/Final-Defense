@@ -109,6 +109,11 @@ export const addGroupMembers = async (groupId, memberIds) => {
   return response.data;
 };
 
+export const leaveGroup = async (groupId) => {
+  const response = await axiosInstance.delete(`/groups/${groupId}/leave`);
+  return response.data;
+};
+
 // ============ FILE UPLOAD FUNCTIONS ============
 
 // Upload single file (images, PDFs, documents)

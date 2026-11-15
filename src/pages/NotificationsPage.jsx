@@ -5,6 +5,7 @@ import { FaUserCheck } from "react-icons/fa6";
 import { FaRegClock } from "react-icons/fa6";
 import { FaMessage } from "react-icons/fa6";
 import NoNotificationsFound from "../components/NoNotificationsFound";
+import UserAvatar from "../components/UserAvatar";
 
 const NotificationsPage = () => {
   const queryClient = useQueryClient();
@@ -54,7 +55,7 @@ const NotificationsPage = () => {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="avatar w-14 h-14 rounded-full bg-base-300">
-                              <img src={request.sender.profilePicture} alt={request.sender.fullName} />
+                              <UserAvatar src={request.sender.profilePicture} name={request.sender.fullName} />
                             </div>
                             <div>
                               <h3 className="font-semibold">{request.sender.fullName}</h3>
@@ -98,7 +99,7 @@ const NotificationsPage = () => {
                       <div className="card-body p-4">
                         <div className="flex items-start gap-3">
                           <div className="avatar mt-1 size-10 rounded-full">
-                            <img src={notification.recipient.profilePicture} alt={notification.recipient.fullName} />
+                            <UserAvatar src={notification.recipient.profilePicture} name={notification.recipient.fullName} />
                           </div>
                           <div className="flex-1">
                             <h3 className="font-semibold">{notification.recipient.fullName}</h3>

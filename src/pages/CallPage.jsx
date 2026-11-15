@@ -4,18 +4,18 @@ import { useNavigate, useParams, useSearchParams } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
 import { useQuery } from "@tanstack/react-query";
 import { getStreamToken } from "../lib/api";
+import { ArrowLeft, Camera, CameraOff, Mic, MicOff, PhoneOff, RefreshCw } from "lucide-react";
 
 import {
   StreamVideo,
   StreamVideoClient,
   StreamCall,
-  CallControls,
   SpeakerLayout,
 } from "@stream-io/video-react-sdk";
 
 import "@stream-io/video-react-sdk/dist/css/styles.css";
+import "./OneToOneCall.css";
 import toast from "react-hot-toast";
-import { FaSyncAlt } from "react-icons/fa";
 
 const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY || "xgqw23kv3tdt";
 
@@ -28,71 +28,137 @@ export default function CallPage() {
   const [client, setClient] = useState(null);
   const [call, setCall] = useState(null);
   const [isConnecting, setIsConnecting] = useState(true);
+  const [callError, setCallError] = useState("");
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(isAudioOnly);
   const [facingMode, setFacingMode] = useState("user");
 
-  const { data: tokenData } = useQuery({
-    queryKey: ["streamToken"],
+  const { data: tokenData, isLoading: tokenLoading, error: tokenError } = useQuery({
+    queryKey: ["streamToken", authUser?._id],
     queryFn: getStreamToken,
     enabled: !!authUser,
   });
 
   useEffect(() => {
+    if (isLoading || tokenLoading) return;
+
+    let active = true;
+    let videoClient;
+    let callInstance;
+
     const initCall = async () => {
       if (!tokenData?.token || !authUser || !callId) {
-        console.log("⏳ Waiting for auth/token/callId...");
+        setCallError(tokenError?.response?.data?.message || "Call credentials are unavailable.");
+        setIsConnecting(false);
         return;
       }
 
       try {
-        console.log("🚀 Initializing 1-on-1 call...");
-        console.log("📞 Call ID:", callId);
-        console.log("🎯 Audio Only:", isAudioOnly);
-
         const user = {
           id: authUser._id,
           name: authUser.fullName,
           image: authUser.profilePicture,
         };
 
-        const videoClient = new StreamVideoClient({
+        videoClient = new StreamVideoClient({
           apiKey: STREAM_API_KEY,
           user,
           token: tokenData.token,
         });
 
-        const callInstance = videoClient.call("default", callId);
-        
-        console.log("📞 Joining call...");
+        callInstance = videoClient.call("default", callId);
         await callInstance.join({ create: true });
 
         if (isAudioOnly) {
           await callInstance.camera.disable();
-          console.log("🔇 Camera disabled for audio-only call");
+          setIsVideoOff(true);
+        } else {
+          try {
+            await callInstance.camera.enable();
+            setIsVideoOff(false);
+          } catch {
+            setIsVideoOff(true);
+            toast.error("Allow camera access to share video");
+          }
         }
 
-        console.log("✅ Joined call successfully");
-        setClient(videoClient);
-        setCall(callInstance);
+        try {
+          await callInstance.microphone.enable();
+          setIsMuted(false);
+        } catch {
+          setIsMuted(true);
+          toast.error("Allow microphone access to speak in the call");
+        }
+
+        if (active) {
+          setCallError("");
+          setClient(videoClient);
+          setCall(callInstance);
+        } else {
+          await callInstance.leave();
+          await videoClient.disconnectUser();
+        }
       } catch (error) {
-        console.error("❌ Error joining call:", error);
-        toast.error("Could not join the call. Please try again.");
+        console.error("Error joining one-to-one call:", error);
+        if (active) {
+          setCallError(error.response?.data?.message || error.message || "Could not join the call.");
+          toast.error("Could not join the call. Check your connection and try again.");
+        }
       } finally {
-        setIsConnecting(false);
+        if (active) setIsConnecting(false);
       }
     };
 
-    initCall();
-  }, [tokenData, authUser, callId, isAudioOnly]);
+    void initCall();
+
+    return () => {
+      active = false;
+      if (callInstance) void callInstance.leave().catch(() => {});
+      if (videoClient) void videoClient.disconnectUser().catch(() => {});
+    };
+  }, [isLoading, tokenLoading, tokenData?.token, tokenError, authUser?._id, authUser?.fullName, authUser?.profilePicture, callId, isAudioOnly]);
+
+  const toggleMute = async () => {
+    if (!call) return;
+    try {
+      if (isMuted) {
+        await call.microphone.enable();
+        setIsMuted(false);
+      } else {
+        await call.microphone.disable();
+        setIsMuted(true);
+      }
+    } catch (error) {
+      console.error("Microphone toggle error:", error);
+      toast.error("Could not change microphone state");
+    }
+  };
+
+  const toggleVideo = async () => {
+    if (!call || isAudioOnly) return;
+    try {
+      if (isVideoOff) {
+        await call.camera.enable();
+        setIsVideoOff(false);
+      } else {
+        await call.camera.disable();
+        setIsVideoOff(true);
+      }
+    } catch (error) {
+      console.error("Camera toggle error:", error);
+      toast.error("Could not change camera state");
+    }
+  };
 
   const toggleCamera = async () => {
-    if (!call) return;
+    if (!call || isAudioOnly || isVideoOff) return;
 
     try {
       const newFacingMode = facingMode === "user" ? "environment" : "user";
       setFacingMode(newFacingMode);
 
       await call.camera.disable();
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 300));
       await call.camera.enable({
         video: { facingMode: newFacingMode }
       });
@@ -101,37 +167,39 @@ export default function CallPage() {
     } catch (error) {
       console.error("Camera switch error:", error);
       toast.error("Failed to switch camera");
-      try { await call.camera.enable(); } catch (e) {}
+      try { await call.camera.enable(); } catch { /* Camera remains unavailable. */ }
     }
   };
 
   const handleLeave = async () => {
     if (call) {
-      await call.leave();
-      toast.success("Call ended");
+      try {
+        await call.leave();
+      } catch (error) {
+        console.error("Error leaving call:", error);
+      }
     }
-    navigate("/");
+    navigate(-1);
   };
 
-  if (isLoading || isConnecting) {
+  if (isLoading || tokenLoading || isConnecting) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-center">
-          <div className="loading loading-spinner loading-lg text-primary"></div>
-          <p className="text-white mt-4">Connecting to call...</p>
-        </div>
+      <div className="one-call-state">
+        <span className="loading loading-spinner loading-md" />
+        <p>Connecting to your call…</p>
       </div>
     );
   }
 
   if (!client || !call) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-center text-white">
-          <p className="text-xl">Failed to connect to call</p>
-          <p className="text-sm opacity-70 mt-2">Please try again</p>
-          <button onClick={() => navigate("/")} className="btn btn-primary mt-4">
-            Go Back
+      <div className="one-call-state">
+        <div className="one-call-state__message">
+          <p className="one-call-state__eyebrow">CALL UNAVAILABLE</p>
+          <h1>Couldn’t join the call.</h1>
+          <p>{callError || "Check your connection and try again."}</p>
+          <button onClick={() => navigate(-1)} className="one-call-back">
+            <ArrowLeft size={16} /> Back to conversation
           </button>
         </div>
       </div>
@@ -139,67 +207,73 @@ export default function CallPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-900">
-      <style>
-        {`
-          .str-video__call-controls__button {
-            background-color: rgba(0,0,0,0.8) !important;
-            color: white !important;
-            border-radius: 50% !important;
-            width: 48px !important;
-            height: 48px !important;
-            margin: 0 8px !important;
-            border: none !important;
-          }
-          .str-video__call-controls__button svg {
-            fill: white !important;
-            stroke: white !important;
-          }
-          .str-video__call-controls {
-            background: rgba(0,0,0,0.6) !important;
-            padding: 12px 20px !important;
-            border-radius: 60px !important;
-          }
-          .str-video__speaker-layout {
-            background: #1a1a2e !important;
-            border-radius: 16px !important;
-            overflow: hidden;
-          }
-          .str-video__participant-name {
-            background: rgba(0,0,0,0.7) !important;
-            color: white !important;
-            padding: 4px 12px !important;
-            border-radius: 20px !important;
-            font-size: 12px !important;
-          }
-          @media (max-width: 768px) {
-            .str-video__call-controls__button {
-              width: 40px !important;
-              height: 40px !important;
-            }
-          }
-        `}
-      </style>
-
+    <div className="one-call-page">
       <StreamVideo client={client}>
         <StreamCall call={call}>
-          <div className="flex-1 p-4">
+          <header className="one-call-header">
+            <button className="one-call-back-button" onClick={handleLeave} aria-label="Leave call">
+              <ArrowLeft size={17} />
+            </button>
+            <div className="one-call-header__title">
+              <span className="one-call-live-dot" />
+              <div>
+                <h1>{isAudioOnly ? "Audio call" : "Video call"}</h1>
+                <p>One-to-one conversation</p>
+              </div>
+            </div>
+            <span className="one-call-secure-label">KYAU CHAT</span>
+          </header>
+
+          <main className="one-call-stage">
             <SpeakerLayout />
-          </div>
-          
-          <div className="pb-8 flex flex-col items-center gap-4">
-            {!isAudioOnly && (
+          </main>
+
+          <footer className="one-call-controls-area">
+            <div className="one-call-toolbar" role="toolbar" aria-label="Call controls">
               <button
-                onClick={toggleCamera}
-                className="btn btn-ghost btn-sm gap-2 text-white/70 hover:text-white"
+                className={`one-call-control ${isMuted ? "is-muted" : ""}`}
+                onClick={toggleMute}
+                aria-label={isMuted ? "Turn microphone on" : "Turn microphone off"}
+                aria-pressed={isMuted}
+                title={isMuted ? "Turn microphone on" : "Turn microphone off"}
               >
-                <FaSyncAlt className="size-4" />
-                {facingMode === "user" ? "Front Camera" : "Back Camera"}
+                {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
+                <span>{isMuted ? "Unmute" : "Mute"}</span>
               </button>
-            )}
-            
-            <CallControls onLeave={handleLeave} />
-          </div>
+
+              {!isAudioOnly && (
+                <button
+                  className={`one-call-control ${isVideoOff ? "is-muted" : ""}`}
+                  onClick={toggleVideo}
+                  aria-label={isVideoOff ? "Turn camera on" : "Turn camera off"}
+                  aria-pressed={isVideoOff}
+                  title={isVideoOff ? "Turn camera on" : "Turn camera off"}
+                >
+                  {isVideoOff ? <CameraOff size={20} /> : <Camera size={20} />}
+                  <span>{isVideoOff ? "Camera on" : "Camera off"}</span>
+                </button>
+              )}
+
+              {!isAudioOnly && (
+                <button
+                  className="one-call-control one-call-control--compact"
+                  onClick={toggleCamera}
+                  disabled={isVideoOff}
+                  aria-label={`Switch to ${facingMode === "user" ? "back" : "front"} camera`}
+                  title={`Switch to ${facingMode === "user" ? "back" : "front"} camera`}
+                >
+                  <RefreshCw size={19} />
+                  <span>Flip</span>
+                </button>
+              )}
+
+              <button className="one-call-control one-call-control--end" onClick={handleLeave} aria-label="End call" title="End call">
+                <PhoneOff size={20} />
+                <span>End</span>
+              </button>
+            </div>
+            <p className="one-call-controls-hint">Your controls stay here while people join.</p>
+          </footer>
         </StreamCall>
       </StreamVideo>
     </div>

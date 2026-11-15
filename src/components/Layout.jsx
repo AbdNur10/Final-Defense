@@ -3,30 +3,32 @@ import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import { FaBars, FaTimes } from 'react-icons/fa';
+import './AppShell.css';
 
 const Layout = ({ children, showSidebar = false }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className='min-h-screen flex flex-col'>
+    <div className='app-frame min-h-screen flex flex-col'>
       {/* Mobile Header - Only show when sidebar is enabled */}
       {showSidebar && (
-        <div className="lg:hidden flex items-center justify-between p-3 bg-base-200 border-b sticky top-0 z-40">
+        <div className="app-mobile-header lg:hidden">
           <button 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="btn btn-ghost btn-sm btn-circle"
+            className="app-mobile-toggle"
+            aria-label={isMobileMenuOpen ? 'Close navigation' : 'Open navigation'}
           >
             {isMobileMenuOpen ? <FaTimes className="size-5" /> : <FaBars className="size-5" />}
           </button>
-          <h1 className="font-bold text-lg">KYAU-CHAT</h1>
+          <h1 className="app-mobile-header__brand">KYAU CHAT</h1>
           <div className="w-8"></div>
         </div>
       )}
 
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && showSidebar && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+        <div
+          className="app-mobile-overlay lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
@@ -36,7 +38,7 @@ const Layout = ({ children, showSidebar = false }) => {
         {showSidebar && (
           <div className={`
             fixed lg:relative z-50
-            w-72 h-full
+            w-[260px] h-full
             transform transition-transform duration-300 ease-in-out
             ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           `}>
@@ -44,9 +46,9 @@ const Layout = ({ children, showSidebar = false }) => {
           </div>
         )}
 
-        <div className='flex-1 flex flex-col min-h-screen overflow-hidden'>
+        <div className='app-content'>
           <Navbar />
-          <main className='flex-1 overflow-y-auto'>
+          <main className='app-main'>
             {children}
           </main>
         </div>

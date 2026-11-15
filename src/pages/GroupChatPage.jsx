@@ -2,16 +2,16 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getGroupMessages, sendGroupMessage, getMyGroups } from "../lib/api";
+import { getGroupMessages, sendGroupMessage, getMyGroups, leaveGroup } from "../lib/api";
 import { useSocket } from "../hooks/useSocket";
 import useAuthUser from "../hooks/useAuthUser";
 import toast from "react-hot-toast";
 import AddMembersModal from "../components/AddMembersModal";
+import UserAvatar from "../components/UserAvatar";
 import { 
   FaInfoCircle, FaBell, FaBellSlash, FaSignOutAlt, 
   FaPalette, FaUsers, FaUserPlus, FaPaperclip, FaImage
 } from "react-icons/fa";
-import { axiosInstance } from "../lib/axios";
 
 export default function GroupChatPage() {
   const { groupId } = useParams();
@@ -59,7 +59,7 @@ export default function GroupChatPage() {
     enabled: !!groupId,
   });
 
-  const { mutate: sendMsg, isPending } = useMutation({
+  const { mutate: sendMsg, mutateAsync: sendMsgAsync, isPending } = useMutation({
     mutationFn: sendGroupMessage,
     onSuccess: (newMessage) => {
       queryClient.setQueryData(
@@ -127,44 +127,38 @@ export default function GroupChatPage() {
     e.target.value = null;
   };
 
-  const startAudioCall = () => {
-    const callLink = `${window.location.origin}/group-call/${groupId}?audioOnly=true`;
-    const callMessage = `🎙️ **${authUser?.fullName} started an Audio Call!** 🎙️\n\n📞 Click here to join: ${callLink}`;
-    sendMsg({ groupId, text: callMessage });
-    toast.success("Audio call started!");
-  };
-
-  const startVideoCall = async () => {
+  const startGroupCall = async (audioOnly) => {
     setIsGenerating(true);
-    const callLink = `${window.location.origin}/group-call/${groupId}`;
-    const callMessage = `🔴 **${authUser?.fullName} started a Video Call!** 🔴\n\n📞 Click here to join: ${callLink}\n\n🎥 Join the video call to connect with everyone!`;
-    
+    const callPath = `/group-call/${groupId}${audioOnly ? "?audioOnly=true" : ""}`;
+    const callLink = `${window.location.origin}${callPath}`;
+    const callType = audioOnly ? "Audio" : "Video";
+    const callMessage = `🎙️ ${authUser?.fullName || "A group member"} started a ${callType} call.\n\n${callLink}`;
+
     try {
-      await sendMsg({ groupId, text: callMessage });
-      toast.success("Video call started!");
-      navigate(`/group-call/${groupId}`);
-    } catch (error) {
-      toast.error("Failed to start call");
+      await sendMsgAsync({ groupId, text: callMessage });
+      navigate(callPath);
+    } catch {
+      toast.error(`Could not start the ${callType.toLowerCase()} call`);
     } finally {
       setIsGenerating(false);
     }
   };
 
+  const startAudioCall = () => startGroupCall(true);
+  const startVideoCall = () => startGroupCall(false);
+
   const handleLeaveGroup = async () => {
     if (window.confirm("Are you sure you want to leave this group?")) {
       try {
-        const updatedMembers = groupInfo.members.filter(
-          member => member._id !== authUser._id
+        await leaveGroup(groupId);
+        queryClient.setQueryData(["groups"], (currentGroups = []) =>
+          currentGroups.filter((group) => group._id !== groupId)
         );
-        
-        await axiosInstance.put(`/groups/${groupId}`, {
-          members: updatedMembers.map(m => m._id || m)
-        });
-        
+        queryClient.removeQueries({ queryKey: ["groupMessages", groupId] });
         toast.success("You left the group");
         navigate("/groups");
       } catch (error) {
-        toast.error("Failed to leave group");
+        toast.error(error.response?.data?.message || "Failed to leave group");
       }
     }
   };
@@ -291,8 +285,8 @@ export default function GroupChatPage() {
             {groupInfo?.members?.map((member) => (
               <div key={member._id} className="badge badge-outline gap-1">
                 <div className="avatar">
-                  <div className="w-4 h-4 rounded-full">
-                    <img src={member.profilePicture} alt={member.fullName} />
+                  <div className="w-4 h-4 rounded-full overflow-hidden">
+                    <UserAvatar src={member.profilePicture} name={member.fullName} />
                   </div>
                 </div>
                 {member.fullName}
@@ -313,8 +307,8 @@ export default function GroupChatPage() {
       )}
 
       <div className="p-2 border-b bg-base-100 flex justify-center gap-3">
-        <button className="btn btn-success btn-sm gap-2" onClick={startAudioCall}>
-          🎙️ Audio Call
+        <button className="btn btn-success btn-sm gap-2" onClick={startAudioCall} disabled={isGenerating}>
+          {isGenerating ? <span className="loading loading-spinner loading-xs" /> : "🎙️ Audio Call"}
         </button>
         <button
           className="btn btn-primary btn-sm gap-2"
@@ -434,6 +428,7 @@ export default function GroupChatPage() {
         <AddMembersModal
           groupId={groupId}
           groupName={groupInfo?.name || "Group"}
+          existingMembers={groupInfo?.members || []}
           onClose={() => setShowAddMembersModal(false)}
         />
       )}

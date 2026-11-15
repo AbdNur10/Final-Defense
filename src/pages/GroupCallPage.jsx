@@ -11,9 +11,24 @@ import {
   SpeakerLayout,
   PaginatedGridLayout,
 } from "@stream-io/video-react-sdk";
+import {
+  Camera,
+  CameraOff,
+  Circle,
+  Grid2X2,
+  Mic,
+  MicOff,
+  MonitorUp,
+  PanelsTopLeft,
+  PhoneOff,
+  RefreshCw,
+  Smile,
+  StopCircle,
+  Users,
+} from "lucide-react";
 import "@stream-io/video-react-sdk/dist/css/styles.css";
+import "./GroupCall.css";
 import toast from "react-hot-toast";
-import { FaSyncAlt } from "react-icons/fa";
 
 const STREAM_API_KEY = "xgqw23kv3tdt";
 
@@ -25,6 +40,8 @@ export default function GroupCallPage() {
   const { authUser, isLoading: authLoading } = useAuthUser();
   const [client, setClient] = useState(null);
   const [call, setCall] = useState(null);
+  const [isJoining, setIsJoining] = useState(true);
+  const [joinError, setJoinError] = useState(null);
   const [participantCount, setParticipantCount] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(isAudioOnly);
@@ -38,8 +55,8 @@ export default function GroupCallPage() {
   const [screenShareStream, setScreenShareStream] = useState(null);
   const [facingMode, setFacingMode] = useState("user");
 
-  const { data: tokenData, isLoading: tokenLoading } = useQuery({
-    queryKey: ["streamToken"],
+  const { data: tokenData, isLoading: tokenLoading, error: tokenError } = useQuery({
+    queryKey: ["streamToken", authUser?._id],
     queryFn: getStreamToken,
     enabled: !!authUser,
   });
@@ -93,83 +110,123 @@ export default function GroupCallPage() {
     }
   };
 
-  // Initialize client and join call
+  // Initialize the video client once credentials and the signed-in user are ready.
   useEffect(() => {
-    if (!authUser || !tokenData?.token) return;
+    if (authLoading || tokenLoading || !authUser) return;
 
-    const user = {
-      id: authUser._id,
-      name: authUser.fullName,
-      image: authUser.profilePicture,
+    if (!tokenData?.token) {
+      setJoinError(tokenError || new Error("A call token could not be loaded."));
+      setIsJoining(false);
+      return;
+    }
+
+    let active = true;
+    let videoClient;
+    let callInstance;
+
+    const updateParticipantCount = () => {
+      const participants = callInstance?.state.participants;
+      if (!participants) return;
+      setParticipantCount(
+        Array.isArray(participants) ? participants.length : Object.keys(participants).length
+      );
     };
 
-    const videoClient = new StreamVideoClient({
-      apiKey: STREAM_API_KEY,
-      user: user,
-      token: tokenData.token,
-    });
+    const handleCustomEvent = (event) => {
+      if (event.type !== "reaction") return;
+      const reactionId = `${Date.now()}-${Math.random()}`;
+      setReactionsList((current) => [...current, { reaction: event.reaction, id: reactionId }]);
+      setTimeout(() => {
+        setReactionsList((current) => current.filter((reaction) => reaction.id !== reactionId));
+      }, 2000);
+    };
 
-    setClient(videoClient);
+    const joinCall = async () => {
+      setIsJoining(true);
+      setJoinError(null);
+      setClient(null);
+      setCall(null);
 
-    const callInstance = videoClient.call("default", groupId);
-    setCall(callInstance);
+      try {
+        videoClient = new StreamVideoClient({
+          apiKey: STREAM_API_KEY,
+          user: {
+            id: authUser._id,
+            name: authUser.fullName,
+            image: authUser.profilePicture,
+          },
+          token: tokenData.token,
+        });
 
-    callInstance
-      .join({ create: true })
-      .then(async () => {
-        console.log("✅ Joined call:", groupId);
+        callInstance = videoClient.call("default", groupId);
+        await callInstance.join({ create: true });
+
+        if (!active) {
+          await callInstance.leave();
+          await videoClient.disconnectUser();
+          return;
+        }
+
         setCallStartedAt(Date.now());
-        
+
+        try {
+          await callInstance.microphone.enable();
+          setIsMuted(false);
+        } catch {
+          setIsMuted(true);
+          toast.error("Allow microphone access to speak in the call");
+        }
+
         if (isAudioOnly) {
           await callInstance.camera.disable();
           setIsVideoOff(true);
+        } else {
+          try {
+            await callInstance.camera.enable();
+            setIsVideoOff(false);
+          } catch {
+            setIsVideoOff(true);
+            toast.error("Allow camera access to share video");
+          }
         }
-        
-        toast.success(`Connected to ${isAudioOnly ? 'audio' : 'video'} call`);
-        
-        const updateCount = () => {
-          const participants = callInstance.state.participants;
-          if (participants) {
-            setParticipantCount(Object.keys(participants).length);
-          }
-        };
-        
-        updateCount();
-        callInstance.on("participant-joined", updateCount);
-        callInstance.on("participant-left", updateCount);
-        
-        // Listen for reactions
-        callInstance.on("custom", (event) => {
-          if (event.type === "reaction") {
-            setReactionsList(prev => [...prev, {
-              reaction: event.reaction,
-              timestamp: Date.now()
-            }]);
-            setTimeout(() => {
-              setReactionsList(prev => prev.filter(r => r.timestamp !== event.timestamp));
-            }, 2000);
-          }
-        });
-      })
-      .catch((err) => {
-        console.error("Join call error:", err);
-        toast.error("Failed to join call");
-      });
 
-    return () => {
-      if (callInstance) {
-        callInstance.off("participant-joined");
-        callInstance.off("participant-left");
-        callInstance.leave();
-      }
-      if (videoClient) {
-        videoClient.disconnectUser();
-      }
-      if (screenShareStream) {
-        screenShareStream.getTracks().forEach(track => track.stop());
+        callInstance.on("participant-joined", updateParticipantCount);
+        callInstance.on("participant-left", updateParticipantCount);
+        callInstance.on("custom", handleCustomEvent);
+        updateParticipantCount();
+        setClient(videoClient);
+        setCall(callInstance);
+        toast.success(`Connected to ${isAudioOnly ? "audio" : "video"} call`);
+      } catch (error) {
+        console.error("Join call error:", error);
+        if (active) {
+          setJoinError(error);
+          toast.error("Could not join the call. Check your connection and try again.");
+        }
+      } finally {
+        if (active) setIsJoining(false);
       }
     };
-  }, [authUser, tokenData, groupId, isAudioOnly]);
+
+    void joinCall();
+
+    return () => {
+      active = false;
+      if (callInstance) {
+        callInstance.off("participant-joined", updateParticipantCount);
+        callInstance.off("participant-left", updateParticipantCount);
+        callInstance.off("custom", handleCustomEvent);
+        void callInstance.leave().catch(() => {});
+      }
+      if (videoClient) {
+        void videoClient.disconnectUser().catch(() => {});
+      }
+    };
+  }, [authLoading, authUser?._id, authUser?.fullName, authUser?.profilePicture, tokenData?.token, tokenError, tokenLoading, groupId, isAudioOnly]);
+
+  useEffect(() => () => {
+    screenShareStream?.getTracks().forEach((track) => track.stop());
+  }, [screenShareStream]);
 
   const toggleMute = async () => {
     if (call) {
@@ -308,156 +365,168 @@ export default function GroupCallPage() {
     navigate(`/groups/${groupId}`);
   };
 
-  if (authLoading || tokenLoading || !client || !call) {
+  if (authLoading || tokenLoading || isJoining) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800">
-        <div className="text-center">
-          <div className="loading loading-spinner loading-lg text-primary"></div>
-          <p className="text-white mt-4 font-medium">Joining call...</p>
+      <div className="group-call-state">
+        <span className="loading loading-spinner loading-md" />
+        <p>Joining group call…</p>
+      </div>
+    );
+  }
+
+  if (joinError || !client || !call) {
+    return (
+      <div className="group-call-state">
+        <div className="group-call-state__message">
+          <p className="group-call-state__eyebrow">CALL UNAVAILABLE</p>
+          <h1>Couldn’t join the group call.</h1>
+          <p>
+            {joinError?.response?.data?.message || joinError?.message || "The call could not be initialized."}
+          </p>
+          <button className="group-call-back" onClick={() => navigate(`/groups/${groupId}`)}>
+            Return to group
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 to-gray-800">
-      <style>
-        {`
-          .str-video__call-controls__button {
-            background-color: rgba(0, 0, 0, 0.75) !important;
-            color: white !important;
-            border-radius: 50% !important;
-            width: 48px !important;
-            height: 48px !important;
-            margin: 0 6px !important;
-            cursor: pointer !important;
-          }
-          .str-video__call-controls__button svg {
-            fill: white !important;
-            stroke: white !important;
-          }
-          .str-video__call-controls__button:hover {
-            background-color: #4f46e5 !important;
-          }
-          .str-video__call-controls__button--active {
-            background-color: #ef4444 !important;
-          }
-          .str-video__call-controls {
-            background: rgba(0, 0, 0, 0.5) !important;
-            padding: 12px 20px !important;
-            border-radius: 60px !important;
-          }
-          .str-video__participant-name {
-            background: rgba(0, 0, 0, 0.7) !important;
-            color: white !important;
-            padding: 4px 12px !important;
-            border-radius: 20px !important;
-            font-size: 12px !important;
-          }
-          @keyframes bounce {
-            0%,100%{transform:scale(1);opacity:1}
-            50%{transform:scale(1.5);opacity:0.7}
-          }
-          .animate-bounce { animation: bounce 0.8s ease-out forwards; }
-          @media (max-width: 768px) {
-            .str-video__call-controls__button {
-              width: 40px !important;
-              height: 40px !important;
-            }
-          }
-        `}
-      </style>
-
+    <div className="group-call-page">
       <StreamVideo client={client}>
         <StreamCall call={call}>
-          <div className="p-3 bg-black/50 flex justify-between items-center">
-            <div>
-              <h1 className="text-white font-bold">
-                {isAudioOnly ? "🎙️ Audio Call" : "🎥 Video Call"}
-              </h1>
-              <p className="text-white/50 text-xs">
-                {formatDuration(callDuration)} • {participantCount} participants
-              </p>
+          <header className="group-call-header">
+            <div className="group-call-heading">
+              <span className="group-call-mark"><Users size={19} aria-hidden="true" /></span>
+              <div>
+                <p className="group-call-eyebrow">KYAU / LIVE ROOM</p>
+                <h1>{isAudioOnly ? "Group audio" : "Group video"}</h1>
+              </div>
             </div>
-            <button onClick={handleEndCall} className="btn btn-error btn-sm">End Call</button>
-          </div>
 
-          <div className="flex-1 p-3">
+            <div className="group-call-meta">
+              <span className="group-call-live"><i /> LIVE</span>
+              <span className="group-call-meta__item"><Users size={15} /> {participantCount} {participantCount === 1 ? "participant" : "participants"}</span>
+              <span className="group-call-meta__item group-call-duration">{formatDuration(callDuration)}</span>
+            </div>
+          </header>
+
+          <main className="group-call-stage">
             {participantCount <= 2 ? (
               <SpeakerLayout participantsBarPosition="bottom" />
             ) : (
               <PaginatedGridLayout />
             )}
-          </div>
+          </main>
 
-          <div className="p-3 bg-black/50">
-            <div className="flex justify-center gap-2 flex-wrap">
-              <button onClick={toggleMute} className={`btn rounded-full w-11 h-11 ${isMuted ? 'btn-error' : 'btn-success'}`}>
-                {isMuted ? "🔇" : "🎤"}
+          <footer className="group-call-footer">
+            <div className="group-call-toolbar" role="toolbar" aria-label="Group call controls">
+              <button
+                onClick={toggleMute}
+                className={`group-call-control ${isMuted ? "is-active" : ""}`}
+                aria-label={isMuted ? "Turn microphone on" : "Turn microphone off"}
+                aria-pressed={isMuted}
+                title={isMuted ? "Turn microphone on" : "Turn microphone off"}
+              >
+                {isMuted ? <MicOff size={19} /> : <Mic size={19} />}
+                <span>{isMuted ? "Unmute" : "Mute"}</span>
               </button>
-              
+
               {!isAudioOnly && (
-                <button onClick={toggleVideo} className={`btn rounded-full w-11 h-11 ${isVideoOff ? 'btn-error' : 'btn-primary'}`}>
-                  {isVideoOff ? "📷" : "📹"}
+                <button
+                  onClick={toggleVideo}
+                  className={`group-call-control ${isVideoOff ? "is-active" : ""}`}
+                  aria-label={isVideoOff ? "Turn camera on" : "Turn camera off"}
+                  aria-pressed={isVideoOff}
+                  title={isVideoOff ? "Turn camera on" : "Turn camera off"}
+                >
+                  {isVideoOff ? <CameraOff size={19} /> : <Camera size={19} />}
+                  <span>{isVideoOff ? "Camera on" : "Camera off"}</span>
                 </button>
               )}
-              
+
               <button
                 onClick={toggleCamera}
-                className="btn rounded-full w-11 h-11 bg-secondary"
-                title={facingMode === "user" ? "Front Camera" : "Back Camera"}
+                className="group-call-control group-call-control--compact"
+                title={facingMode === "user" ? "Switch to back camera" : "Switch to front camera"}
+                aria-label={facingMode === "user" ? "Switch to back camera" : "Switch to front camera"}
               >
-                <FaSyncAlt className="size-5" />
+                <RefreshCw size={18} />
+                <span>Flip</span>
               </button>
-              
-              <button onClick={toggleScreenShare} className={`btn rounded-full w-11 h-11 ${isScreenSharing ? 'btn-info' : 'btn-secondary'}`}>
-                🖥️
+
+              <button
+                onClick={toggleScreenShare}
+                className={`group-call-control ${isScreenSharing ? "is-active" : ""}`}
+                aria-label={isScreenSharing ? "Stop screen sharing" : "Share screen"}
+                aria-pressed={isScreenSharing}
+                title={isScreenSharing ? "Stop screen sharing" : "Share screen"}
+              >
+                <MonitorUp size={19} />
+                <span>{isScreenSharing ? "Stop share" : "Share screen"}</span>
               </button>
-              
-              <button onClick={toggleRecording} className={`btn rounded-full w-11 h-11 ${isRecording ? 'btn-error animate-pulse' : 'btn-warning'}`}>
-                {isRecording ? "⏺️" : "🔴"}
+
+              <button
+                onClick={toggleRecording}
+                className={`group-call-control ${isRecording ? "is-recording" : ""}`}
+                aria-label={isRecording ? "Stop recording" : "Start recording"}
+                aria-pressed={isRecording}
+                title={isRecording ? "Stop recording" : "Start recording"}
+              >
+                {isRecording ? <StopCircle size={19} /> : <Circle size={19} />}
+                <span>{isRecording ? "Stop record" : "Record"}</span>
               </button>
-              
-              <button onClick={() => setShowReactions(!showReactions)} className="btn rounded-full w-11 h-11 bg-purple-600">
-                😊
+
+              <button
+                onClick={() => setShowReactions(!showReactions)}
+                className={`group-call-control ${showReactions ? "is-active" : ""}`}
+                aria-label="Toggle reactions"
+                aria-expanded={showReactions}
+                title="Reactions"
+              >
+                <Smile size={19} />
+                <span>React</span>
               </button>
-              
-              <button onClick={handleEndCall} className="btn btn-error rounded-full w-11 h-11">📞</button>
+
+              <button
+                onClick={() => setLayout(layout === "grid" ? "speaker" : "grid")}
+                className="group-call-control group-call-control--compact"
+                aria-label={layout === "grid" ? "Switch to speaker view" : "Switch to grid view"}
+                title={layout === "grid" ? "Switch to speaker view" : "Switch to grid view"}
+              >
+                {layout === "grid" ? <PanelsTopLeft size={18} /> : <Grid2X2 size={18} />}
+                <span>Layout</span>
+              </button>
+
+              <button onClick={handleEndCall} className="group-call-control group-call-control--end" aria-label="Leave group call" title="Leave call">
+                <PhoneOff size={19} />
+                <span>Leave</span>
+              </button>
             </div>
-            
+
             {showReactions && (
-              <div className="flex justify-center gap-2 mt-3 flex-wrap">
-                {["👍","❤️","😂","😮","😢","👏","🎉","🔥"].map(emoji => (
-                  <button key={emoji} onClick={() => sendReaction(emoji)} className="text-2xl hover:scale-125 transition">
+              <div className="group-call-reactions" aria-label="Choose a reaction">
+                {["👍", "❤️", "😂", "😮", "😢", "👏", "🎉", "🔥"].map((emoji) => (
+                  <button key={emoji} onClick={() => sendReaction(emoji)} title={`Send ${emoji}`}>
                     {emoji}
                   </button>
                 ))}
               </div>
             )}
-            
-            {reactionsList.map((r, i) => (
-              <div key={i} className="fixed top-1/2 left-1/2 text-4xl animate-bounce pointer-events-none z-50">
+
+            {reactionsList.map((r) => (
+              <div key={r.id} className="group-call-reaction-float">
                 {r.reaction}
               </div>
             ))}
-            
-            <div className="flex justify-center gap-3 mt-2 text-white/40 text-xs flex-wrap">
-              <span>{isMuted ? "🔴 Mic off" : "🟢 Mic on"}</span>
-              {!isAudioOnly && <span>{isVideoOff ? "📷 Camera off" : "📹 Camera on"}</span>}
-              <span>{facingMode === "user" ? "📱 Front Camera" : "📷 Back Camera"}</span>
-              {isScreenSharing && <span className="text-info">🖥️ Sharing screen</span>}
-              {isRecording && <span className="text-error animate-pulse">🔴 Recording</span>}
+
+            <div className="group-call-status" aria-live="polite">
+              <span className={isMuted ? "is-off" : ""}>{isMuted ? "Mic off" : "Mic on"}</span>
+              {!isAudioOnly && <span className={isVideoOff ? "is-off" : ""}>{isVideoOff ? "Camera off" : "Camera on"}</span>}
+              {isScreenSharing && <span className="is-live">Screen sharing</span>}
+              {isRecording && <span className="is-recording-status">Recording</span>}
             </div>
-            
-            <div className="flex justify-center mt-2">
-              <button 
-                onClick={() => setLayout(layout === "grid" ? "speaker" : "grid")}
-                className="text-white/40 text-xs hover:text-white/80"
-              >
-                {layout === "grid" ? "Switch to Speaker View" : "Switch to Grid View"}
-              </button>
-            </div>
-          </div>
+          </footer>
         </StreamCall>
       </StreamVideo>
     </div>

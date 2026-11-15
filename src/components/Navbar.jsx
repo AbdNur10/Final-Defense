@@ -1,15 +1,20 @@
 // frontend/src/components/Navbar.jsx
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import useAuthUser from "../hooks/useAuthUser";
-import { LuShipWheel } from "react-icons/lu";
-import { FaBell, FaUsers, FaRobot, FaUserFriends, FaSignOutAlt, FaHome, FaInbox } from "react-icons/fa";
+import { MessageSquareText } from "lucide-react";
+import { FaBell, FaUsers, FaUserFriends, FaSignOutAlt, FaInbox } from "react-icons/fa";
 import { IoSettingsOutline } from "react-icons/io5";
 import ThemeSelector from "./ThemeSelector";
 import useLogout from "../hooks/useLogout";
 import { useNotificationStore } from "../store/useNotificationStore";
 import { useSocket } from "../hooks/useSocket";
+import { getFriendRequests } from "../lib/api";
+import UserAvatar from "./UserAvatar";
 import toast from "react-hot-toast";
+
+const formatBadgeCount = (count) => count > 99 ? "99+" : `${count}+`;
 
 const Navbar = () => {
   const { authUser } = useAuthUser();
@@ -19,21 +24,43 @@ const Navbar = () => {
 
   const isChatPage = location.pathname?.startsWith("/chat");
   const isInboxPage = location.pathname?.startsWith("/inbox");
+  const pageTitle = {
+    "/": "Overview",
+    "/inbox": "Inbox",
+    "/friends": "Friends",
+    "/groups": "Groups",
+    "/ai-mentor": "AI mentor",
+    "/notifications": "Notifications",
+    "/settings": "Settings",
+  }[location.pathname] || "Your conversations";
   const { unreadCount, increment, reset } = useNotificationStore();
   const { socket } = useSocket();
   const { logoutMutation } = useLogout();
+  const { data: friendRequestData } = useQuery({
+    queryKey: ["friendRequests"],
+    queryFn: getFriendRequests,
+    enabled: Boolean(authUser),
+    staleTime: 30000,
+  });
+  const pendingFriendRequests = friendRequestData?.incomingReqs?.length || 0;
 
   useEffect(() => {
     if (!socket) return;
-    const handleGroupMsg = () => increment();
-    const handlePrivateMsg = () => increment();
+    const handleGroupMsg = (message) => {
+      if (message?.sender?._id === authUser?._id || location.pathname.startsWith("/groups/")) return;
+      increment();
+    };
+    const handlePrivateMsg = (message) => {
+      if (message?.sender?._id === authUser?._id || isChatPage) return;
+      increment();
+    };
     socket.on("new_group_message", handleGroupMsg);
     socket.on("new_private_message", handlePrivateMsg);
     return () => {
       socket.off("new_group_message", handleGroupMsg);
       socket.off("new_private_message", handlePrivateMsg);
     };
-  }, [socket, increment]);
+  }, [socket, increment, authUser?._id, location.pathname, isChatPage]);
 
   const handleLogout = () => {
     reset();
@@ -42,128 +69,60 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-base-100/80 backdrop-blur-md border-b border-base-300 sticky top-0 z-30">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          {(isChatPage || isInboxPage) && (
-            <Link to="/" className="flex items-center gap-2.5 group">
-              <LuShipWheel className="size-8 text-primary group-hover:rotate-12 transition-transform" />
-              <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                KYAU-CHAT
-              </span>
-            </Link>
-          )}
+    <nav className="app-topbar">
+      <div className="app-topbar__inner">
+        {isChatPage || isInboxPage ? (
+          <Link to="/" className="app-topbar__brand">
+            <MessageSquareText size={20} />
+            KYAU CHAT
+          </Link>
+        ) : (
+          <div className="app-topbar__context">
+            <p className="app-topbar__eyebrow">KYAU / YOUR SPACE</p>
+            <p className="app-topbar__title">{pageTitle}</p>
+          </div>
+        )}
 
-          {/* Navigation Links - Hidden on Mobile */}
-          {!isChatPage && !isInboxPage && (
-            <div className="hidden md:flex items-center gap-1">
-              <Link to="/" className="btn btn-ghost btn-sm gap-2">
-                <FaHome />
-                Home
-              </Link>
-              <Link to="/inbox" className="btn btn-ghost btn-sm gap-2">
-                <FaInbox />
-                Inbox
-              </Link>
-              <Link to="/friends" className="btn btn-ghost btn-sm gap-2">
-                <FaUserFriends />
-                Friends
-              </Link>
-              <Link to="/groups" className="btn btn-ghost btn-sm gap-2">
-                <FaUsers />
-                Groups
-              </Link>
-              <Link to="/ai-mentor" className="btn btn-ghost btn-sm gap-2">
-                <FaRobot />
-                AI Mentor
-              </Link>
-            </div>
-          )}
+        <div className="app-topbar__actions">
+          <Link to="/inbox" className="app-icon-button" aria-label="Inbox" title="Inbox" onClick={reset}>
+            <FaInbox />
+            {unreadCount > 0 && <span className="app-icon-button__count" aria-label={`${unreadCount} unread messages`}>{formatBadgeCount(unreadCount)}</span>}
+          </Link>
+          <button
+            onClick={() => navigate("/groups")}
+            className="app-icon-button app-mobile-groups md:hidden"
+            aria-label="Groups"
+            title="Groups"
+          >
+            <FaUsers />
+          </button>
+          <Link to="/notifications" className="app-icon-button" aria-label="Notifications" title="Notifications">
+            <FaBell />
+            {pendingFriendRequests > 0 && <span className="app-icon-button__count" aria-label={`${pendingFriendRequests} pending friend requests`}>{formatBadgeCount(pendingFriendRequests)}</span>}
+          </Link>
+          <ThemeSelector />
 
-          {/* Right Actions */}
-          <div className="flex items-center gap-2 ml-auto">
-            {/* Inbox Button - Always visible */}
-            <Link to="/inbox" className="btn btn-ghost btn-circle relative">
-              <FaInbox className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 badge badge-xs badge-primary animate-pulse">
-                  {unreadCount}
-                </span>
-              )}
-            </Link>
-
-            {/* Groups Button (Mobile only) */}
+          <div className="relative">
             <button
-              onClick={() => navigate("/groups")}
-              className="btn btn-ghost btn-circle md:hidden"
-              title="Groups"
+              className="app-user-trigger"
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              aria-label="Open profile menu"
+              aria-expanded={showUserMenu}
             >
-              <FaUsers className="h-5 w-5" />
+              <span className="app-user-trigger__avatar">
+                <UserAvatar src={authUser?.profilePicture} name={authUser?.fullName} />
+              </span>
             </button>
 
-            {/* Notifications */}
-            <Link to="/notifications" className="btn btn-ghost btn-circle relative">
-              <FaBell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 badge badge-xs badge-primary animate-pulse">
-                  {unreadCount}
-                </span>
-              )}
-            </Link>
-
-            {/* Theme Selector */}
-            <ThemeSelector />
-
-            {/* User Menu */}
-            <div className="dropdown dropdown-end">
-              <button 
-                className="btn btn-ghost btn-circle avatar"
-                onClick={() => setShowUserMenu(!showUserMenu)}
-              >
-                <div className="w-9 h-9 rounded-full ring ring-primary/20">
-                  <img src={authUser?.profilePicture} alt="User Avatar" className="object-cover" />
-                </div>
-              </button>
-              
-              {showUserMenu && (
-                <ul className="dropdown-content menu bg-base-200 rounded-box z-50 w-52 p-2 shadow-xl mt-2 border border-base-300" onClick={() => setShowUserMenu(false)}>
-                  <li className="menu-title px-3 py-2 border-b border-base-300">
-                    <span>{authUser?.fullName}</span>
-                  </li>
-                  <li>
-                    <Link to="/inbox" className="gap-3">
-                      <FaInbox />
-                      Inbox
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/friends" className="gap-3">
-                      <FaUserFriends />
-                      My Friends
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/ai-mentor" className="gap-3">
-                      <FaRobot />
-                      AI Mentor
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/settings" className="gap-3">
-                      <IoSettingsOutline />
-                      Settings
-                    </Link>
-                  </li>
-                  <li className="border-t border-base-300 mt-2 pt-2">
-                    <button onClick={handleLogout} className="gap-3 text-error">
-                      <FaSignOutAlt />
-                      Logout
-                    </button>
-                  </li>
-                </ul>
-              )}
-            </div>
+            {showUserMenu && (
+              <div className="app-user-menu" onClick={() => setShowUserMenu(false)}>
+                <p className="app-user-menu__name">{authUser?.fullName}</p>
+                <Link to="/inbox"><FaInbox /> Inbox</Link>
+                <Link to="/friends"><FaUserFriends /> My Friends</Link>
+                <Link to="/settings"><IoSettingsOutline /> Settings</Link>
+                <button className="is-danger" onClick={handleLogout}><FaSignOutAlt /> Log out</button>
+              </div>
+            )}
           </div>
         </div>
       </div>
