@@ -14,16 +14,13 @@ import {
 import {
   Camera,
   CameraOff,
-  Circle,
   Grid2X2,
   Mic,
   MicOff,
-  MonitorUp,
   PanelsTopLeft,
   PhoneOff,
   RefreshCw,
   Smile,
-  StopCircle,
   Users,
 } from "lucide-react";
 import "@stream-io/video-react-sdk/dist/css/styles.css";
@@ -45,14 +42,11 @@ export default function GroupCallPage() {
   const [participantCount, setParticipantCount] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(isAudioOnly);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
   const [reactionsList, setReactionsList] = useState([]);
   const [callDuration, setCallDuration] = useState(0);
   const [callStartedAt, setCallStartedAt] = useState(null);
   const [layout, setLayout] = useState("grid");
-  const [screenShareStream, setScreenShareStream] = useState(null);
   const [facingMode, setFacingMode] = useState("user");
 
   const { data: tokenData, isLoading: tokenLoading, error: tokenError } = useQuery({
@@ -77,36 +71,23 @@ export default function GroupCallPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // ✅ FIXED: Toggle Camera (Front/Back)
   const toggleCamera = async () => {
-    if (!call) return;
+    if (!call || isAudioOnly || isVideoOff) return;
 
     try {
-      const newFacingMode = facingMode === "user" ? "environment" : "user";
+      await call.camera.flip();
+      const direction = call.camera.state.direction;
+      if (!direction) {
+        toast.error("Camera switching is not supported on this device");
+        return;
+      }
+
+      const newFacingMode = direction === "front" ? "user" : "environment";
       setFacingMode(newFacingMode);
-
-      // Turn off camera first
-      await call.camera.disable();
-
-      // Small delay to ensure camera is fully disabled
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // Enable camera with new facing mode
-      await call.camera.enable({
-        video: { facingMode: newFacingMode }
-      });
-      
-      toast.success(`Switched to ${newFacingMode === "user" ? "Front" : "Back"} camera`);
+      toast.success(`Switched to ${direction} camera`);
     } catch (error) {
       console.error("Camera switch error:", error);
       toast.error("Failed to switch camera");
-      
-      // Try to re-enable camera if it failed
-      try {
-        await call.camera.enable();
-      } catch (e) {
-        console.error("Failed to re-enable camera:", e);
-      }
     }
   };
 
@@ -184,6 +165,9 @@ export default function GroupCallPage() {
           try {
             await callInstance.camera.enable();
             setIsVideoOff(false);
+            setFacingMode(
+              callInstance.camera.state.direction === "back" ? "environment" : "user"
+            );
           } catch {
             setIsVideoOff(true);
             toast.error("Allow camera access to share video");
@@ -224,10 +208,6 @@ export default function GroupCallPage() {
     };
   }, [authLoading, authUser?._id, authUser?.fullName, authUser?.profilePicture, tokenData?.token, tokenError, tokenLoading, groupId, isAudioOnly]);
 
-  useEffect(() => () => {
-    screenShareStream?.getTracks().forEach((track) => track.stop());
-  }, [screenShareStream]);
-
   const toggleMute = async () => {
     if (call) {
       if (isMuted) {
@@ -254,95 +234,6 @@ export default function GroupCallPage() {
     }
   };
 
-  // Screen Share using browser's native API
-  const toggleScreenShare = async () => {
-    if (!call) return;
-    
-    try {
-      if (isScreenSharing) {
-        if (screenShareStream) {
-          screenShareStream.getTracks().forEach(track => track.stop());
-          setScreenShareStream(null);
-        }
-        if (!isVideoOff) {
-          await call.camera.enable();
-        }
-        setIsScreenSharing(false);
-        toast.success("Screen sharing stopped");
-      } else {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        setScreenShareStream(stream);
-        
-        const videoTrack = stream.getVideoTracks()[0];
-        await call.publishVideoStream(videoTrack);
-        await call.camera.disable();
-        
-        setIsScreenSharing(true);
-        toast.success("Screen sharing started");
-        
-        videoTrack.onended = () => {
-          toggleScreenShare();
-        };
-      }
-    } catch (err) {
-      console.error("Screen share error:", err);
-      toast.error("Screen share cancelled or failed");
-    }
-  };
-
-  // Recording using browser's MediaRecorder API
-  const [mediaRecorder, setMediaRecorder] = useState(null);
-  const [recordedChunks, setRecordedChunks] = useState([]);
-
-  const toggleRecording = async () => {
-    if (!call) return;
-    
-    try {
-      if (isRecording) {
-        if (mediaRecorder && mediaRecorder.state !== "inactive") {
-          mediaRecorder.stop();
-        }
-        setIsRecording(false);
-        toast.success("Recording stopped. Saving...");
-      } else {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ 
-          video: true, 
-          audio: true 
-        });
-        
-        const recorder = new MediaRecorder(stream);
-        const chunks = [];
-        
-        recorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            chunks.push(event.data);
-          }
-        };
-        
-        recorder.onstop = () => {
-          const blob = new Blob(chunks, { type: "video/webm" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `call-recording-${Date.now()}.webm`;
-          a.click();
-          URL.revokeObjectURL(url);
-          toast.success("Recording saved!");
-          stream.getTracks().forEach(track => track.stop());
-        };
-        
-        recorder.start(1000);
-        setMediaRecorder(recorder);
-        setRecordedChunks(chunks);
-        setIsRecording(true);
-        toast.success("Recording started");
-      }
-    } catch (err) {
-      console.error("Recording error:", err);
-      toast.error("Recording failed");
-    }
-  };
-
   const sendReaction = (reaction) => {
     if (call) {
       call.sendCustomEvent({ type: "reaction", reaction });
@@ -352,12 +243,6 @@ export default function GroupCallPage() {
   };
 
   const handleEndCall = async () => {
-    if (isScreenSharing && screenShareStream) {
-      screenShareStream.getTracks().forEach(track => track.stop());
-    }
-    if (isRecording && mediaRecorder) {
-      mediaRecorder.stop();
-    }
     if (call) {
       await call.leave();
       toast.success("Call ended");
@@ -445,37 +330,18 @@ export default function GroupCallPage() {
                 </button>
               )}
 
-              <button
-                onClick={toggleCamera}
-                className="group-call-control group-call-control--compact"
-                title={facingMode === "user" ? "Switch to back camera" : "Switch to front camera"}
-                aria-label={facingMode === "user" ? "Switch to back camera" : "Switch to front camera"}
-              >
-                <RefreshCw size={18} />
-                <span>Flip</span>
-              </button>
-
-              <button
-                onClick={toggleScreenShare}
-                className={`group-call-control ${isScreenSharing ? "is-active" : ""}`}
-                aria-label={isScreenSharing ? "Stop screen sharing" : "Share screen"}
-                aria-pressed={isScreenSharing}
-                title={isScreenSharing ? "Stop screen sharing" : "Share screen"}
-              >
-                <MonitorUp size={19} />
-                <span>{isScreenSharing ? "Stop share" : "Share screen"}</span>
-              </button>
-
-              <button
-                onClick={toggleRecording}
-                className={`group-call-control ${isRecording ? "is-recording" : ""}`}
-                aria-label={isRecording ? "Stop recording" : "Start recording"}
-                aria-pressed={isRecording}
-                title={isRecording ? "Stop recording" : "Start recording"}
-              >
-                {isRecording ? <StopCircle size={19} /> : <Circle size={19} />}
-                <span>{isRecording ? "Stop record" : "Record"}</span>
-              </button>
+              {!isAudioOnly && (
+                <button
+                  onClick={toggleCamera}
+                  className="group-call-control group-call-control--compact"
+                  disabled={isVideoOff}
+                  title={facingMode === "user" ? "Switch to back camera" : "Switch to front camera"}
+                  aria-label={facingMode === "user" ? "Switch to back camera" : "Switch to front camera"}
+                >
+                  <RefreshCw size={18} />
+                  <span>Flip</span>
+                </button>
+              )}
 
               <button
                 onClick={() => setShowReactions(!showReactions)}
@@ -523,8 +389,6 @@ export default function GroupCallPage() {
             <div className="group-call-status" aria-live="polite">
               <span className={isMuted ? "is-off" : ""}>{isMuted ? "Mic off" : "Mic on"}</span>
               {!isAudioOnly && <span className={isVideoOff ? "is-off" : ""}>{isVideoOff ? "Camera off" : "Camera on"}</span>}
-              {isScreenSharing && <span className="is-live">Screen sharing</span>}
-              {isRecording && <span className="is-recording-status">Recording</span>}
             </div>
           </footer>
         </StreamCall>
