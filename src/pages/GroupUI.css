@@ -250,7 +250,7 @@
 .groups-modal {
   width: min(100%, 500px);
   max-height: min(760px, calc(100dvh - 40px));
-  overflow: visible;
+  overflow-y: auto;
   padding: 24px;
   color: #24372e;
   background: #fbfcf9;

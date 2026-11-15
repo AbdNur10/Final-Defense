@@ -1,6 +1,6 @@
 // frontend/src/pages/CallPage.jsx
 import { useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
 import { useQuery } from "@tanstack/react-query";
 import { getStreamToken } from "../lib/api";
@@ -22,6 +22,7 @@ const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY || "xgqw23kv3tdt";
 export default function CallPage() {
   const { id: callId } = useParams();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const isAudioOnly = searchParams.get("audioOnly") === "true";
   const navigate = useNavigate();
   const { authUser, isLoading } = useAuthUser();
@@ -32,6 +33,12 @@ export default function CallPage() {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(isAudioOnly);
   const [facingMode, setFacingMode] = useState("user");
+  const chatUserId = location.state?.chatUserId ||
+    callId?.split("-").find((userId) => userId && userId !== authUser?._id);
+
+  const returnToChat = () => {
+    navigate(chatUserId ? `/chat/${chatUserId}` : "/inbox", { replace: true });
+  };
 
   const { data: tokenData, isLoading: tokenLoading, error: tokenError } = useQuery({
     queryKey: ["streamToken", authUser?._id],
@@ -76,6 +83,9 @@ export default function CallPage() {
           try {
             await callInstance.camera.enable();
             setIsVideoOff(false);
+            setFacingMode(
+              callInstance.camera.state.direction === "back" ? "environment" : "user"
+            );
           } catch {
             setIsVideoOff(true);
             toast.error("Allow camera access to share video");
@@ -154,20 +164,18 @@ export default function CallPage() {
     if (!call || isAudioOnly || isVideoOff) return;
 
     try {
-      const newFacingMode = facingMode === "user" ? "environment" : "user";
-      setFacingMode(newFacingMode);
+      await call.camera.flip();
+      const direction = call.camera.state.direction;
+      if (!direction) {
+        toast.error("Camera switching is not supported on this device");
+        return;
+      }
 
-      await call.camera.disable();
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      await call.camera.enable({
-        video: { facingMode: newFacingMode }
-      });
-      
-      toast.success(`Switched to ${newFacingMode === "user" ? "Front" : "Back"} camera`);
+      setFacingMode(direction === "back" ? "environment" : "user");
+      toast.success(`Switched to ${direction} camera`);
     } catch (error) {
       console.error("Camera switch error:", error);
       toast.error("Failed to switch camera");
-      try { await call.camera.enable(); } catch { /* Camera remains unavailable. */ }
     }
   };
 
@@ -179,7 +187,7 @@ export default function CallPage() {
         console.error("Error leaving call:", error);
       }
     }
-    navigate(-1);
+    returnToChat();
   };
 
   if (isLoading || tokenLoading || isConnecting) {
@@ -198,7 +206,7 @@ export default function CallPage() {
           <p className="one-call-state__eyebrow">CALL UNAVAILABLE</p>
           <h1>Couldn’t join the call.</h1>
           <p>{callError || "Check your connection and try again."}</p>
-          <button onClick={() => navigate(-1)} className="one-call-back">
+          <button onClick={returnToChat} className="one-call-back">
             <ArrowLeft size={16} /> Back to conversation
           </button>
         </div>

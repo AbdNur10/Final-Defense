@@ -170,22 +170,22 @@ export default function GroupChatPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-screen">
+      <div className="group-chat-loading flex justify-center items-center">
         <span className="loading loading-spinner loading-lg" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-base-100">
+    <div className="group-chat-page flex flex-col bg-base-100">
       {/* Header */}
-      <div className="p-3 border-b bg-base-200 flex justify-between items-center">
-        <button onClick={() => navigate("/groups")} className="btn btn-ghost btn-sm">
+      <div className="group-chat-header p-3 border-b bg-base-200 flex justify-between items-center">
+        <button onClick={() => navigate("/groups")} className="group-chat-back btn btn-ghost btn-sm">
           ← Back
         </button>
         
-        <div 
-          className="text-center cursor-pointer hover:opacity-70 transition"
+        <div
+          className="group-chat-title text-center cursor-pointer hover:opacity-70 transition"
           onClick={() => setShowGroupInfo(!showGroupInfo)}
         >
           <h1 className="font-bold text-lg" style={{ color: groupColor }}>
@@ -196,7 +196,7 @@ export default function GroupChatPage() {
           </p>
         </div>
         
-        <div className="flex gap-1">
+        <div className="group-chat-header__actions flex gap-1">
           <button
             className="btn btn-ghost btn-sm btn-circle"
             onClick={() => setShowGroupInfo(!showGroupInfo)}
@@ -306,7 +306,7 @@ export default function GroupChatPage() {
         </div>
       )}
 
-      <div className="p-2 border-b bg-base-100 flex justify-center gap-3">
+      <div className="group-chat-call-actions p-2 border-b bg-base-100 flex justify-center gap-3">
         <button className="btn btn-success btn-sm gap-2" onClick={startAudioCall} disabled={isGenerating}>
           {isGenerating ? <span className="loading loading-spinner loading-xs" /> : "🎙️ Audio Call"}
         </button>
@@ -319,7 +319,7 @@ export default function GroupChatPage() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="group-chat-messages flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 ? (
           <div className="text-center text-base-content opacity-50 mt-10">
             No messages yet. Say hello!
@@ -341,7 +341,7 @@ export default function GroupChatPage() {
                     {msg.sender?.fullName}
                   </div>
                 )}
-                <div className={`chat-bubble ${isOwnMessage ? "chat-bubble-primary" : "chat-bubble-secondary"} ${isCallLink ? "bg-primary/20 border border-primary" : ""}`}>
+                <div className={`group-chat-bubble chat-bubble ${isOwnMessage ? "chat-bubble-primary" : "chat-bubble-secondary"} ${isCallLink ? "bg-primary/20 border border-primary" : ""}`}>
                   {isCallLink ? (
                     <div className="space-y-2">
                       <div className={`font-bold ${isAudioCall ? "text-success" : "text-primary"}`}>
@@ -380,7 +380,7 @@ export default function GroupChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSend} className="p-4 border-t bg-base-200">
+      <form onSubmit={handleSend} className="group-chat-composer p-4 border-t bg-base-200">
         <div className="flex gap-2">
           <div className="relative flex-1">
             <input

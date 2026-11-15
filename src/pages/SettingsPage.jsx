@@ -87,7 +87,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-4xl p-4">
+    <div className="settings-page container mx-auto max-w-4xl p-4">
       <div className="flex items-center gap-3 mb-6">
         <IoSettingsOutline className="size-8 text-primary" />
         <h1 className="text-2xl font-bold">Settings</h1>
@@ -221,7 +221,7 @@ export default function SettingsPage() {
             </h2>
 
             {/* Theme */}
-            <div className="flex items-center justify-between p-3 bg-base-100 rounded-lg">
+            <div className="settings-preference-row flex items-center justify-between p-3 bg-base-100 rounded-lg">
               <div className="flex items-center gap-3">
                 <div className="text-2xl">{theme === "dark" ? <FaMoon /> : <FaSun />}</div>
                 <div>
@@ -235,7 +235,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Language */}
-            <div className="flex items-center justify-between p-3 bg-base-100 rounded-lg">
+            <div className="settings-preference-row flex items-center justify-between p-3 bg-base-100 rounded-lg">
               <div className="flex items-center gap-3">
                 <FaGlobe className="text-primary" />
                 <div>
@@ -255,7 +255,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Notifications */}
-            <div className="flex items-center justify-between p-3 bg-base-100 rounded-lg">
+            <div className="settings-preference-row flex items-center justify-between p-3 bg-base-100 rounded-lg">
               <div className="flex items-center gap-3">
                 <FaBell className="text-primary" />
                 <div>
@@ -272,7 +272,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Sound */}
-            <div className="flex items-center justify-between p-3 bg-base-100 rounded-lg">
+            <div className="settings-preference-row flex items-center justify-between p-3 bg-base-100 rounded-lg">
               <div className="flex items-center gap-3">
                 {settings.sound ? <FaVolumeUp className="text-primary" /> : <FaVolumeMute className="text-error" />}
                 <div>
@@ -289,7 +289,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Online Status */}
-            <div className="flex items-center justify-between p-3 bg-base-100 rounded-lg">
+            <div className="settings-preference-row flex items-center justify-between p-3 bg-base-100 rounded-lg">
               <div className="flex items-center gap-3">
                 <div className={`w-3 h-3 rounded-full ${settings.onlineStatus ? "bg-green-500" : "bg-gray-400"}`} />
                 <div>

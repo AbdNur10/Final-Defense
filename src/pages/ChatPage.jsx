@@ -120,7 +120,7 @@ export default function ChatPage() {
       toast.success("Call link sent!");
       
       // Navigate to call page
-      navigate(`/call/${callId}`);
+      navigate(`/call/${callId}`, { state: { chatUserId: targetUserId } });
     } catch (error) {
       console.error("❌ Error starting call:", error);
       toast.error("Failed to start call");
@@ -144,7 +144,7 @@ export default function ChatPage() {
       });
       toast.success("Audio call link sent!");
       
-      navigate(`/call/${callId}?audioOnly=true`);
+      navigate(`/call/${callId}?audioOnly=true`, { state: { chatUserId: targetUserId } });
     } catch (error) {
       console.error("❌ Error starting audio call:", error);
       toast.error("Failed to start audio call");
@@ -182,7 +182,7 @@ export default function ChatPage() {
 
   if (!chatClient || !channel) {
     return (
-      <div className="h-screen flex items-center justify-center">
+      <div className="chat-page-state flex items-center justify-center">
         <div className="text-center">
           <p className="text-error">Failed to load chat</p>
           <button onClick={() => window.location.reload()} className="btn btn-primary mt-4">
@@ -194,9 +194,8 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="h-[93vh] relative">
-      {/* Call Buttons - Fixed at top right */}
-      <div className="absolute top-16 right-4 z-10 flex gap-2">
+    <div className="chat-page">
+      <div className="chat-page__call-actions">
         <button
           onClick={handleAudioCall}
           className="btn btn-success btn-sm gap-2 shadow-lg"

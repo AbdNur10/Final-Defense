@@ -30,7 +30,7 @@ const App = () => {
   if (isLoading) return <PageLoader />;
 
   return (
-    <div className="h-screen" data-theme={theme}>
+    <div className="app-root min-h-screen" data-theme={theme}>
       <Routes>
 
         {/* HOME */}

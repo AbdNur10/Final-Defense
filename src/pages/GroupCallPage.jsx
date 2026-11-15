@@ -12,6 +12,7 @@ import {
   PaginatedGridLayout,
 } from "@stream-io/video-react-sdk";
 import {
+  ArrowLeft,
   Camera,
   CameraOff,
   Grid2X2,
@@ -243,11 +244,17 @@ export default function GroupCallPage() {
   };
 
   const handleEndCall = async () => {
-    if (call) {
-      await call.leave();
-      toast.success("Call ended");
+    try {
+      if (call) {
+        await call.leave();
+        toast.success("Call ended");
+      }
+    } catch (error) {
+      console.error("Error leaving group call:", error);
+      toast.error("Could not leave the call cleanly");
+    } finally {
+      navigate(`/groups/${groupId}`);
     }
-    navigate(`/groups/${groupId}`);
   };
 
   if (authLoading || tokenLoading || isJoining) {
@@ -281,6 +288,16 @@ export default function GroupCallPage() {
       <StreamVideo client={client}>
         <StreamCall call={call}>
           <header className="group-call-header">
+            <button
+              className="group-call-back-button"
+              onClick={handleEndCall}
+              aria-label="Leave call and return to group"
+              title="Back to group"
+            >
+              <ArrowLeft size={17} aria-hidden="true" />
+              <span>Back to group</span>
+            </button>
+
             <div className="group-call-heading">
               <span className="group-call-mark"><Users size={19} aria-hidden="true" /></span>
               <div>

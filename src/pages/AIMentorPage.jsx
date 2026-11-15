@@ -157,7 +157,7 @@ export default function AIMentorPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-gradient-to-br from-base-200 to-base-100">
+    <div className="ai-mentor-page flex flex-col bg-gradient-to-br from-base-200 to-base-100">
       {/* Header */}
       <div className="p-4 border-b bg-base-100/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="flex items-center justify-between flex-wrap gap-3">

@@ -52,12 +52,12 @@ const NotificationsPage = () => {
                       className="card bg-base-200 shadow-sm hover:shadow-md transition-shadow"
                     >
                       <div className="card-body p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex min-w-0 flex-1 items-center gap-3">
                             <div className="avatar w-14 h-14 rounded-full bg-base-300">
                               <UserAvatar src={request.sender.profilePicture} name={request.sender.fullName} />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <h3 className="font-semibold">{request.sender.fullName}</h3>
                               <div className="flex flex-wrap gap-1.5 mt-1">
                                 <span className="badge badge-secondary badge-sm">
@@ -97,11 +97,11 @@ const NotificationsPage = () => {
                   {acceptedRequests.map((notification) => (
                     <div key={notification._id} className="card bg-base-200 shadow-sm">
                       <div className="card-body p-4">
-                        <div className="flex items-start gap-3">
+                        <div className="flex flex-wrap items-start gap-3">
                           <div className="avatar mt-1 size-10 rounded-full">
                             <UserAvatar src={notification.recipient.profilePicture} name={notification.recipient.fullName} />
                           </div>
-                          <div className="flex-1">
+                          <div className="min-w-0 flex-1">
                             <h3 className="font-semibold">{notification.recipient.fullName}</h3>
                             <p className="text-sm my-1">
                               {notification.recipient.fullName} accepted your friend request
