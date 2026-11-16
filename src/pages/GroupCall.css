@@ -755,6 +755,13 @@
   background: #6975ef;
 }
 
+@media (hover: none) {
+  .group-call-control:hover:not(:disabled),
+  .group-call-reactions button:hover {
+    transform: none;
+  }
+}
+
 @media (max-width: 760px) {
   .group-call-header {
     min-height: 66px;
@@ -852,30 +859,31 @@
     animation: none;
     transition: none;
   }
+}
 
-  @media (max-height: 520px) and (orientation: landscape) {
-    .group-call-page {
-      min-height: 0;
-    }
+@media (max-height: 520px) and (orientation: landscape) {
+  .group-call-page {
+    min-height: 0;
+  }
 
-    .group-call-header {
-      min-height: 54px;
-      padding-top: 6px;
-      padding-bottom: 6px;
-    }
+  .group-call-header {
+    min-height: 54px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
 
-    .group-call-stage {
-      padding-top: 6px;
-      padding-bottom: 6px;
-    }
+  .group-call-stage {
+    min-height: 0;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
 
-    .group-call-control {
-      min-height: 46px;
-    }
+  .group-call-control {
+    min-height: 46px;
+  }
 
-    .group-call-footer {
-      gap: 5px;
-      padding-top: 5px;
-    }
+  .group-call-footer {
+    gap: 5px;
+    padding-top: 5px;
   }
 }

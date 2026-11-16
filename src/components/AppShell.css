@@ -1,10 +1,15 @@
 .app-frame {
-  min-height: 100vh;
-  min-height: 100svh;
+  height: 100vh;
   min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
   color: #1b2c27;
   background: #f3f5f1;
   font-family: "DM Sans", "Avenir Next", sans-serif;
+}
+
+.app-frame > .flex {
+  min-height: 0;
 }
 
 .app-mobile-header {
@@ -57,7 +62,7 @@
   width: 260px;
   height: 100vh;
   height: 100dvh;
-  min-height: 100svh;
+  min-height: 0;
   flex-direction: column;
   overflow-y: auto;
   color: #31443b;
@@ -768,7 +773,6 @@
 @media (max-width: 760px) {
   .app-sidebar {
     width: min(290px, calc(100vw - 54px));
-    min-height: 100svh;
   }
 
   .app-topbar {
@@ -889,6 +893,10 @@
     padding: 10px 10px max(10px, env(safe-area-inset-bottom));
   }
 
+  .group-chat-composer input {
+    font-size: 16px;
+  }
+
   .settings-page {
     padding: 12px;
   }
@@ -909,6 +917,11 @@
   .group-chat-page,
   .ai-mentor-page {
     min-height: 0;
+  }
+
+  .group-chat-page {
+    height: calc(100vh - 58px);
+    height: calc(100dvh - 58px);
   }
 }
 
@@ -942,6 +955,12 @@
 
   .settings-page .card-body {
     padding: 12px;
+  }
+}
+
+@media (hover: none) {
+  .dashboard-person:hover {
+    transform: none;
   }
 }
 

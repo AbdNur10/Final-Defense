@@ -358,6 +358,12 @@
   }
 }
 
+@media (hover: none) {
+  .one-call-control:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .one-call-control {
     transition: none;

@@ -28,6 +28,9 @@ export default function GroupChatPage() {
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [groupColor, setGroupColor] = useState("#4F46E5");
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const isAtBottomRef = useRef(true);
+  const previousMessageCountRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const themeColors = [
@@ -95,8 +98,31 @@ export default function GroupChatPage() {
   }, [socket, groupId, queryClient, isMuted]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const previousMessageCount = previousMessageCountRef.current;
+    previousMessageCountRef.current = messages.length;
+
+    if (previousMessageCount !== null && messages.length <= previousMessageCount) return;
+
+    const lastMessage = messages[messages.length - 1];
+    const isOwnMessage = lastMessage?.sender?._id === authUser?._id;
+    if (!isAtBottomRef.current && !isOwnMessage) return;
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: previousMessageCount === null || previousMessageCount === 0
+        ? "auto"
+        : "smooth",
+    });
+  }, [messages, authUser?._id]);
+
+  const handleMessagesScroll = (event) => {
+    const container = event.currentTarget;
+    isAtBottomRef.current =
+      container.scrollHeight - container.scrollTop - container.clientHeight < 96;
+  };
 
   const handleSend = (e) => {
     e.preventDefault();
@@ -319,7 +345,11 @@ export default function GroupChatPage() {
         </button>
       </div>
 
-      <div className="group-chat-messages flex-1 overflow-y-auto p-4 space-y-3">
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleMessagesScroll}
+        className="group-chat-messages flex-1 overflow-y-auto p-4 space-y-3"
+      >
         {messages.length === 0 ? (
           <div className="text-center text-base-content opacity-50 mt-10">
             No messages yet. Say hello!
