@@ -110,12 +110,7 @@ export default function GroupChatPage() {
     const isOwnMessage = lastMessage?.sender?._id === authUser?._id;
     if (!isAtBottomRef.current && !isOwnMessage) return;
 
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior: previousMessageCount === null || previousMessageCount === 0
-        ? "auto"
-        : "smooth",
-    });
+    container.scrollTop = container.scrollHeight;
   }, [messages, authUser?._id]);
 
   const handleMessagesScroll = (event) => {

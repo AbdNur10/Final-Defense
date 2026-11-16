@@ -362,6 +362,10 @@
   .one-call-control:hover:not(:disabled) {
     transform: none;
   }
+
+  .one-call-control {
+    transition: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

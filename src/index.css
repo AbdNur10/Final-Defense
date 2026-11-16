@@ -364,14 +364,6 @@
   transform: scale(1.01);
 }
 
-@media (hover: none) {
-  .str-video__participant-view:hover,
-  .chat-bubble:hover,
-  .card-hover:hover {
-    transform: none;
-  }
-}
-
 /* ============ GLASS MORPHISM EFFECT ============ */
 .glass {
   background: rgba(255, 255, 255, 0.1);
@@ -645,5 +637,15 @@ img:not([src]) {
   
   .str-video__call-controls__button {
     margin: 0 4px !important;
+  }
+}
+
+@media (hover: none) {
+  .str-video__participant-view:hover,
+  .str-video__call-controls__button:hover,
+  .chat-bubble:hover,
+  .card-hover:hover,
+  .avatar:hover img {
+    transform: none !important;
   }
 }

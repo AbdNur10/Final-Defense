@@ -867,23 +867,100 @@
   }
 
   .group-call-header {
-    min-height: 54px;
-    padding-top: 6px;
-    padding-bottom: 6px;
+    display: flex;
+    min-height: 48px;
+    gap: 8px;
+    padding-top: 4px;
+    padding-right: max(10px, env(safe-area-inset-right));
+    padding-bottom: 4px;
+    padding-left: max(10px, env(safe-area-inset-left));
+  }
+
+  .group-call-back-button {
+    width: 34px;
+    min-height: 34px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .group-call-back-button span {
+    display: none;
+  }
+
+  .group-call-heading {
+    gap: 8px;
+  }
+
+  .group-call-mark {
+    width: 30px;
+    height: 30px;
+  }
+
+  .group-call-eyebrow {
+    display: none;
+  }
+
+  .group-call-header h1 {
+    font-size: 14px;
+  }
+
+  .group-call-meta {
+    flex: 0 0 auto;
+    gap: 7px;
+    font-size: 9px;
+  }
+
+  .group-call-meta__item:not(.group-call-duration) {
+    display: none;
   }
 
   .group-call-stage {
     min-height: 0;
-    padding-top: 6px;
-    padding-bottom: 6px;
-  }
-
-  .group-call-control {
-    min-height: 46px;
+    padding: 4px 8px;
   }
 
   .group-call-footer {
-    gap: 5px;
-    padding-top: 5px;
+    gap: 4px;
+    padding-top: 4px;
+    padding-right: max(8px, env(safe-area-inset-right));
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    padding-left: max(8px, env(safe-area-inset-left));
+  }
+
+  .group-call-toolbar {
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .group-call-control {
+    width: clamp(40px, calc((100vw - 48px) / 6), 58px);
+    min-height: 42px;
+    gap: 3px;
+    padding: 4px 2px;
+    font-size: 8px;
+  }
+
+  .group-call-control--compact {
+    width: clamp(40px, calc((100vw - 48px) / 6), 58px);
+  }
+
+  .group-call-status {
+    gap: 4px;
+    font-size: 8px;
+  }
+
+  .group-call-status span {
+    padding: 3px 6px;
+  }
+
+  .group-call-reactions {
+    gap: 3px;
+    padding: 3px;
+  }
+
+  .group-call-reactions button {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
   }
 }
