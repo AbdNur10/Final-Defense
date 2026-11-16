@@ -1,15 +1,22 @@
 .app-frame {
+  width: 100%;
+  max-width: 100vw;
   height: 100vh;
   min-height: 100dvh;
   height: 100dvh;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: hidden;
   color: #1b2c27;
   background: #f3f5f1;
   font-family: "DM Sans", "Avenir Next", sans-serif;
 }
 
 .app-frame > .flex {
+  width: 100%;
+  max-width: 100%;
   min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .app-mobile-header {
@@ -59,7 +66,8 @@
 
 .app-sidebar {
   display: flex;
-  width: 260px;
+  width: min(260px, 100vw);
+  max-width: 100%;
   height: 100vh;
   height: 100dvh;
   min-height: 0;
@@ -72,6 +80,7 @@
 
 .app-sidebar__brand {
   display: flex;
+  min-width: 0;
   min-height: 82px;
   align-items: center;
   gap: 11px;
@@ -92,8 +101,12 @@
 }
 
 .app-sidebar__brand-name {
+  min-width: 0;
+  overflow: hidden;
   font-size: 14px;
   font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-sidebar__nav {
@@ -106,6 +119,7 @@
 
 .app-nav-item {
   display: flex;
+  min-width: 0;
   min-height: 44px;
   align-items: center;
   gap: 12px;
@@ -216,6 +230,7 @@
 .app-content {
   display: flex;
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   min-height: 0;
   flex: 1;
@@ -225,6 +240,9 @@
 
 .app-topbar {
   position: sticky;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   z-index: 30;
   top: 0;
   min-height: 70px;
@@ -235,6 +253,8 @@
 
 .app-topbar__inner {
   display: flex;
+  width: 100%;
+  min-width: 0;
   min-height: 70px;
   align-items: center;
   justify-content: space-between;
@@ -244,6 +264,7 @@
 
 .app-topbar__context {
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .app-topbar__eyebrow {
@@ -261,12 +282,21 @@
 
 .app-topbar__brand {
   display: flex;
+  min-width: 0;
+  max-width: 100%;
   align-items: center;
   gap: 9px;
   color: #234b39;
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-topbar__brand svg {
+  flex: 0 0 auto;
 }
 
 .app-topbar__brand svg {
@@ -275,6 +305,8 @@
 
 .app-topbar__actions {
   display: flex;
+  min-width: 0;
+  flex: 0 1 auto;
   align-items: center;
   gap: 8px;
   margin-left: auto;
@@ -283,6 +315,7 @@
 .app-icon-button {
   position: relative;
   display: grid;
+  flex: 0 0 auto;
   width: 38px;
   height: 38px;
   place-items: center;
@@ -340,7 +373,7 @@
   top: calc(100% + 10px);
   right: 0;
   z-index: 50;
-  width: 220px;
+  width: min(220px, calc(100vw - 16px));
   padding: 8px;
   background: #fff;
   border: 1px solid #e1e7e1;
@@ -392,10 +425,13 @@
 }
 
 .app-main {
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
   min-height: 0;
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
 }
 
@@ -773,6 +809,7 @@
 @media (max-width: 760px) {
   .app-sidebar {
     width: min(290px, calc(100vw - 54px));
+    max-width: calc(100vw - 24px);
   }
 
   .app-topbar {
@@ -955,6 +992,30 @@
 
   .settings-page .card-body {
     padding: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .app-topbar__inner {
+    gap: 6px;
+  }
+
+  .app-topbar__brand {
+    max-width: calc(100vw - 200px);
+  }
+
+  .app-topbar__actions {
+    gap: 0;
+  }
+
+  .app-icon-button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .app-user-trigger {
+    width: 36px;
+    height: 36px;
   }
 }
 
